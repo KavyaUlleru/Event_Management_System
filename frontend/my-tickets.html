@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Tickets - Event Management System</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        .ticket-map {
+            height: 250px;
+            width: 100%;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            z-index: 1 !important;
+            background-color: #f0f0f0;
+            position: relative;
+        }
+        .leaflet-container {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            border-radius: 8px;
+        }
+        .leaflet-control-attribution {
+            background-color: rgba(255, 255, 255, 0.7);
+        }
+    </style>
+</head>
+
+<body>
+    <nav>
+        <div class="container">
+            <div class="logo">🎉 Event Manager</div>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="events.html">Events</a></li>
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="my-tickets.html">My Tickets</a></li>
+                <li><a href="#" onclick="logout()" class="btn btn-danger btn-sm">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card mt-4">
+            <div class="card-header">
+                <h1 class="card-title">My Tickets</h1>
+            </div>
+
+            <div id="ticketsContainer"></div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        protectPage();
+
+        async function loadTickets() {
+            showLoading('ticketsContainer');
+
+            try {
+                const user = getUser();
+                console.log('Current user:', user);
+                
+                const data = await getMyTickets();
+                console.log('My tickets data:', data);
+
+                if (!data.registrations || data.registrations.length === 0) {
+                    document.getElementById('ticketsContainer').innerHTML = `
+            <div class="text-center" style="padding: 3rem; color: var(--gray);">
+              <div style="font-size: 4rem; margin-bottom: 1rem;">🎫</div>
+              <h3>No tickets yet</h3>
+              <p>Register for events to get your digital tickets</p>
+              <a href="events.html" class="btn btn-primary mt-2">Browse Events</a>
+            </div>
+          `;
+                    return;
+                }
+
+                const ticketsHTML = data.registrations.map(reg => {
+                    const isPastEvent = new Date(reg.event.date) < new Date();
+                    const mapId = `ticket-map-${reg._id}`;
+
+                    return `
+            <div class="ticket mb-4" onclick="window.location.href='event-detail.html?eventId=${reg.event._id}'" style="cursor: pointer; transition: all 0.3s;">
+              <div class="ticket-header">
+                <h2>${reg.event.title}</h2>
+                <p style="margin-top: 0.5rem; opacity: 0.9;">Ticket ID: ${reg.ticketId}</p>
+              </div>
+              <div class="ticket-body">
+                <div class="grid grid-2">
+                  <div>
+                    <h3 style="margin-bottom: 1rem;">Event Details</h3>
+                    <p><strong>Date:</strong> ${formatDate(reg.event.date)}</p>
+                    <p><strong>Time:</strong> ${reg.event.time}</p>
+                    <p><strong>Venue:</strong> ${reg.event.venue}, ${reg.event.address}, ${reg.event.city}, ${reg.event.state} ${reg.event.zip}</p>
+                    <p><strong>Registered:</strong> ${formatDateTime(reg.createdAt)}</p>
+                    <p>
+                      <strong>Status:</strong> 
+                      <span class="badge ${reg.attended ? 'badge-success' : 'badge-warning'}">
+                        ${reg.attended ? `Attended on ${formatDateTime(reg.attendedAt)}` : 'Not Attended'}
+                      </span>
+                    </p>
+                  </div>
+                  <div>
+                    <div class="qr-code-container">
+                      <h3 style="margin-bottom: 1rem;">Your QR Code</h3>
+                      <img src="${reg.qrCode}" alt="QR Code Ticket" />
+                      <p style="margin-top: 1rem; font-size: 0.875rem; color: var(--gray);">
+                        ${isPastEvent
+                            ? 'This event has passed'
+                            : 'Present this QR code at the event entrance'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                ${reg.event.latitude && reg.event.longitude ? `
+                  <div style="margin-top: 20px; display: flex; gap: 1rem; align-items: center; justify-content: space-between;">
+                    <div style="flex: 1;">
+                      <h3 style="margin-bottom: 1rem;">📍 Event Location</h3>
+                      <div id="${mapId}" class="ticket-map"></div>
+                    </div>
+                  </div>
+                  <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <a href="route-map.html?eventId=${reg.event._id}" class="btn btn-success" style="flex: 1; min-width: 150px;">
+                      📍 View Route to Event
+                    </a>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          `;
+                }).join('');
+
+                document.getElementById('ticketsContainer').innerHTML = ticketsHTML;
+
+                // Initialize maps for event locations
+                setTimeout(() => {
+                    data.registrations.forEach(reg => {
+                        if (reg.event && reg.event.latitude && reg.event.longitude) {
+                            const mapId = `ticket-map-${reg._id}`;
+                            const mapContainer = document.getElementById(mapId);
+                            if (mapContainer) {
+                                try {
+                                    const map = L.map(mapId, {
+                                        scrollWheelZoom: false
+                                    }).setView([reg.event.latitude, reg.event.longitude], 13);
+                                    
+                                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                                        attribution: '© OpenStreetMap contributors',
+                                        maxZoom: 19
+                                    }).addTo(map);
+                                    
+                                    L.marker([reg.event.latitude, reg.event.longitude])
+                                        .bindPopup(`<strong>${reg.event.venue}</strong><br>${reg.event.address}`)
+                                        .addTo(map)
+                                        .openPopup();
+                                    
+                                    // Trigger map resize
+                                    map.invalidateSize();
+                                } catch (error) {
+                                    console.log('Map initialization skipped for:', mapId);
+                                }
+                            }
+                        }
+                    });
+                }, 300);
+            } catch (error) {
+                showError('ticketsContainer', error.message);
+            }
+        }
+
+        loadTickets();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Route to Event - Event Management System</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.umd.js"></script>
+    <!-- Fallback CDN for Leaflet Routing if unpkg fails -->
+    <script>
+        if (typeof L === 'undefined') {
+            console.warn('⚠️ Loading Leaflet from alternative CDN...');
+            var scriptL = document.createElement('script');
+            scriptL.src = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
+            document.head.appendChild(scriptL);
+        }
+    </script>
+    <style>
+        .map-container {
+            position: relative;
+            height: 70vh;
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+            border: 1px solid #ddd;
+        }
+
+        .leaflet-container {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100%;
+        }
+
+        .route-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .info-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-card h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.875rem;
+            color: var(--gray);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-card p {
+            margin: 0;
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: var(--dark);
+        }
+
+        .info-icon {
+            font-size: 1.5rem;
+            margin-right: 0.5rem;
+        }
+
+        .location-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .location-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-right: 0.5rem;
+        }
+
+        .location-start {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .location-end {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        .loading-message {
+            text-align: center;
+            padding: 2rem;
+            color: var(--gray);
+        }
+
+        .error-message {
+            padding: 1rem;
+            background: #ffebee;
+            color: #c62828;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border-left: 4px solid #c62828;
+        }
+
+        .success-message {
+            padding: 1rem;
+            background: #e8f5e9;
+            color: #2e7d32;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border-left: 4px solid #2e7d32;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 1.5rem;
+        }
+
+        .btn-directions {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .leaflet-routing-container {
+            background: white !important;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .event-details {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .event-details h2 {
+            margin-top: 0;
+            color: var(--primary);
+        }
+
+        .event-details p {
+            margin: 0.5rem 0;
+            color: var(--dark);
+        }
+
+        .back-button {
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .map-container {
+                height: 50vh;
+            }
+
+            .route-info {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <nav>
+        <div class="container">
+            <div class="logo">🎉 Event Manager</div>
+            <ul id="navLinks">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="events.html">Events</a></li>
+                <li id="authLinks">
+                    <a href="index.html">Login</a>
+                </li>
+                <li id="userLinks" class="hidden">
+                    <a href="dashboard.html">Dashboard</a>
+                    <a href="my-tickets.html">My Tickets</a>
+                    <a href="#" onclick="logout()" class="btn btn-danger btn-sm">Logout</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="back-button">
+            <a href="events.html" class="btn btn-secondary">← Back to Events</a>
+        </div>
+
+        <div id="errorMessage"></div>
+        <div id="successMessage"></div>
+
+        <div class="event-details" id="eventDetails"></div>
+
+        <h1>Route to Event</h1>
+        <p style="color: var(--gray); margin-bottom: 2rem;">Your current location will be detected automatically. The route map shows the fastest path from your location to the event venue.</p>
+
+        <div id="routeInfo" class="route-info"></div>
+
+        <div class="loading-message" id="loadingMessage">
+            <div class="spinner"></div>
+            <p>📍 Getting your location and calculating route...</p>
+            <p style="font-size: 0.875rem; color: #999; margin-top: 1rem;">Please allow location access when prompted</p>
+        </div>
+
+        <div id="mapContainer" class="map-container" style="display: none;"></div>
+
+        <div class="button-group">
+            <a id="googleMapsBtn" href="#" target="_blank" class="btn btn-primary btn-directions" style="display: none;">
+                <span>📍</span> Open in Google Maps
+            </a>
+            <button id="refreshBtn" class="btn btn-secondary" style="display: none;" onclick="initializeRoute()">
+                🔄 Refresh Route
+            </button>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        console.log('🚀 Route map page loading...');
+        console.log('📚 Checking libraries:');
+        console.log('  Leaflet:', typeof L !== 'undefined' ? '✅ Loaded' : '❌ Not loaded');
+        console.log('  Leaflet Routing:', typeof L !== 'undefined' && typeof L.Routing !== 'undefined' ? '✅ Loaded' : '⚠️ Not loaded yet (will load via CDN)');
+
+        let map = null;
+        let routingControl = null;
+        let userMarker = null;
+        let eventMarker = null;
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const eventId = urlParams.get('eventId');
+
+        if (!eventId) {
+            showError('errorMessage', 'Event ID not provided. Please select an event from the events page.');
+            document.getElementById('loadingMessage').style.display = 'none';
+        } else {
+            initializeRoute();
+        }
+
+        async function initializeRoute() {
+            try {
+                console.log('🚀 Starting route initialization...');
+                console.log('📍 Geolocation API available:', 'geolocation' in navigator);
+                
+                document.getElementById('loadingMessage').style.display = 'block';
+                document.getElementById('mapContainer').style.display = 'none';
+                document.getElementById('routeInfo').innerHTML = '';
+                document.getElementById('errorMessage').innerHTML = '';
+                document.getElementById('successMessage').innerHTML = '';
+
+                // Get event details
+                console.log('📡 Fetching event data for ID:', eventId);
+                const eventData = await getEvent(eventId);
+                const event = eventData.event;
+                console.log('✅ Event data received:', event);
+
+                if (!event.latitude || !event.longitude) {
+                    throw new Error('Event location coordinates are not available. Please contact the organizer.');
+                }
+
+                // Display event details
+                displayEventDetails(event);
+
+                // Get user's current location
+                const userLocation = await getUserLocation();
+
+                // Initialize map
+                initializeMap(userLocation, event);
+
+                // Calculate and display route
+                calculateRoute(userLocation, event);
+
+                // Display route info
+                displayRouteInfo(userLocation, event);
+
+                // Setup Google Maps button
+                setupGoogleMapsButton(userLocation, event);
+
+                document.getElementById('loadingMessage').style.display = 'none';
+                document.getElementById('mapContainer').style.display = 'block';
+                document.getElementById('refreshBtn').style.display = 'inline-block';
+
+                showSuccess('successMessage', '✅ Route calculated successfully!');
+            } catch (error) {
+                console.error('Error:', error);
+                showError('errorMessage', '❌ ' + error.message);
+                document.getElementById('loadingMessage').style.display = 'none';
+            }
+        }
+
+        function displayEventDetails(event) {
+            const eventDetailsHtml = `
+                <h2>${event.title}</h2>
+                <p><strong>📍 Venue:</strong> ${event.venue}</p>
+                <p><strong>📮 Address:</strong> ${event.address}, ${event.city}, ${event.state} ${event.zip}</p>
+                <p><strong>📅 Date:</strong> ${formatDate(event.date)}</p>
+                <p><strong>🕒 Time:</strong> ${event.time}</p>
+                <p><strong>📝 Description:</strong> ${event.description}</p>
+            `;
+            document.getElementById('eventDetails').innerHTML = eventDetailsHtml;
+        }
+
+        function getUserLocation() {
+            return new Promise((resolve, reject) => {
+                console.log('📍 Requesting user location...');
+                
+                if (!navigator.geolocation) {
+                    console.error('❌ Geolocation not supported');
+                    reject(new Error('Geolocation is not supported by your browser.'));
+                    return;
+                }
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        console.log('✅ Location obtained:', position.coords);
+                        resolve({
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude,
+                            accuracy: position.coords.accuracy
+                        });
+                    },
+                    (error) => {
+                        console.error('❌ Geolocation error:', error.code, error.message);
+                        if (error.code === error.PERMISSION_DENIED) {
+                            reject(new Error('Location access was denied. Please enable location services and try again.'));
+                        } else if (error.code === error.POSITION_UNAVAILABLE) {
+                            reject(new Error('Location information is not available.'));
+                        } else if (error.code === error.TIMEOUT) {
+                            reject(new Error('The location request timed out. Please try again.'));
+                        } else {
+                            reject(new Error('Unable to get your location: ' + error.message));
+                        }
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
+            });
+        }
+
+        function initializeMap(userLocation, event) {
+            if (map) {
+                map.remove();
+            }
+
+            // Center map between user and event
+            const centerLat = (userLocation.lat + event.latitude) / 2;
+            const centerLng = (userLocation.lng + event.longitude) / 2;
+
+            map = L.map('mapContainer').setView([centerLat, centerLng], 12);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+
+            // Add user location marker
+            userMarker = L.circleMarker([userLocation.lat, userLocation.lng], {
+                color: '#1976d2',
+                fillColor: '#1976d2',
+                fillOpacity: 0.8,
+                radius: 8,
+                weight: 2
+            })
+                .bindPopup(`<strong>📍 Your Location</strong><br>Accuracy: ±${Math.round(userLocation.accuracy)}m`)
+                .addTo(map)
+                .openPopup();
+
+            // Add event location marker
+            eventMarker = L.marker([event.latitude, event.longitude], {
+                icon: L.icon({
+                    iconUrl: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBmaWxsPSIjN2IxZmEyIiBkPSJNMTIgMkM2LjQ4IDIgMiA2LjQ4IDIgMTJzNC40OCAxMCAxMCAxMCAxMC00LjQ4IDEwLTEwUzE3LjUyIDIgMTIgMnptMCAxOGMtNC40MSAwLTgtMy41OS04LThzMy41OS04IDgtOCA4IDMuNTkgOCA4LTMuNTkgOC04IDh6Ii8+PC9zdmc+',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 30],
+                    popupAnchor: [0, -30]
+                })
+            })
+                .bindPopup(`<strong>${event.venue}</strong><br>${event.address}`)
+                .addTo(map)
+                .openPopup();
+
+            // Fit bounds to show both markers
+            const group = new L.featureGroup([userMarker, eventMarker]);
+            map.fitBounds(group.getBounds().pad(0.1));
+
+            // Adjust map height
+            setTimeout(() => map.invalidateSize(), 100);
+        }
+
+        function calculateRoute(userLocation, event) {
+            if (routingControl) {
+                map.removeControl(routingControl);
+            }
+
+            // Check if L.Routing is available
+            if (typeof L.Routing === 'undefined') {
+                console.warn('⚠️ Leaflet Routing Machine not loaded. Drawing manual route line instead.');
+                drawManualRoute(userLocation, event);
+                return;
+            }
+
+            try {
+                routingControl = L.Routing.control({
+                    waypoints: [
+                        L.latLng(userLocation.lat, userLocation.lng),
+                        L.latLng(event.latitude, event.longitude)
+                    ],
+                    routeWhileDragging: false,
+                    lineOptions: {
+                        styles: [
+                            { color: '#1976d2', opacity: 0.8, weight: 5 }
+                        ]
+                    },
+                    show: false,
+                    addWaypoints: false,
+                    draggableWaypoints: false,
+                    fitSelectedRoutes: false,
+                    showAlternatives: false
+                }).addTo(map);
+                console.log('✅ Route calculated successfully');
+            } catch (error) {
+                console.error('❌ Error calculating route:', error);
+                drawManualRoute(userLocation, event);
+            }
+        }
+
+        function drawManualRoute(userLocation, event) {
+            // Draw a simple line between user and event as fallback
+            const routeLine = L.polyline([
+                [userLocation.lat, userLocation.lng],
+                [event.latitude, event.longitude]
+            ], {
+                color: '#1976d2',
+                opacity: 0.8,
+                weight: 5,
+                dashArray: '5, 10'
+            }).addTo(map);
+            
+            console.log('✅ Manual route line drawn (library not available)');
+        }
+
+        function displayRouteInfo(userLocation, event) {
+            const calcDistance = calculateDistance(
+                userLocation.lat,
+                userLocation.lng,
+                event.latitude,
+                event.longitude
+            );
+
+            const routeHtml = `
+                <div class="info-card">
+                    <h3><span class="info-icon">📍</span>Starting Point</h3>
+                    <div class="location-header">
+                        <span class="location-badge location-start">Your Location</span>
+                    </div>
+                    <p>${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)}</p>
+                </div>
+                <div class="info-card">
+                    <h3><span class="info-icon">🎉</span>Destination</h3>
+                    <div class="location-header">
+                        <span class="location-badge location-end">Event Venue</span>
+                    </div>
+                    <p>${event.venue}</p>
+                </div>
+                <div class="info-card">
+                    <h3><span class="info-icon">📏</span>Approximate Distance</h3>
+                    <p>${calcDistance.toFixed(2)} km</p>
+                </div>
+                <div class="info-card">
+                    <h3><span class="info-icon">⏱️</span>Estimated Time</h3>
+                    <p>${estimateTime(calcDistance)}</p>
+                </div>
+            `;
+
+            document.getElementById('routeInfo').innerHTML = routeHtml;
+        }
+
+        function setupGoogleMapsButton(userLocation, event) {
+            const googleMapsUrl = `https://www.google.com/maps/dir/${userLocation.lat},${userLocation.lng}/${event.latitude},${event.longitude}`;
+            const googleMapsBtn = document.getElementById('googleMapsBtn');
+            googleMapsBtn.href = googleMapsUrl;
+            googleMapsBtn.style.display = 'inline-flex';
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth's radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        function estimateTime(distanceKm) {
+            // Assuming average speed of 40 km/h
+            const hours = distanceKm / 40;
+            if (hours < 1) {
+                const minutes = Math.round(hours * 60);
+                return `~${minutes} minutes`;
+            } else {
+                const h = Math.floor(hours);
+                const m = Math.round((hours - h) * 60);
+                return `~${h}h ${m}m`;
+            }
+        }
+
+        function showError(elementId, message) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.innerHTML = `<div class="error-message">${message}</div>`;
+            }
+        }
+
+        function showSuccess(elementId, message) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.innerHTML = `<div class="success-message">${message}</div>`;
+            }
+        }
+
+        // Update navigation
+        updateNav();
+    </script>
+</body>
+
+</html>

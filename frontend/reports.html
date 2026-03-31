@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports - Event Management System</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <nav>
+        <div class="container">
+            <div class="logo">🎉 Event Manager</div>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="events.html">Events</a></li>
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="my-tickets.html">My Tickets</a></li>
+                <li><a href="#" onclick="logout()" class="btn btn-danger btn-sm">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card mt-4">
+            <div class="card-header">
+                <h1 class="card-title">Event Report</h1>
+            </div>
+
+            <div id="reportContainer"></div>
+        </div>
+
+        <div id="systemOverview" class="hidden">
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h2 class="card-title">System Overview</h2>
+                </div>
+                <div id="overviewContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        protectPage();
+
+        // Check if user has permission
+        if (!hasRole('organizer', 'admin')) {
+            alert('You do not have permission to view reports');
+            window.location.href = 'dashboard.html';
+        }
+
+        // Get event ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const eventId = urlParams.get('eventId');
+
+        async function loadEventReport() {
+            if (!eventId) {
+                showError('reportContainer', 'No event selected');
+                return;
+            }
+
+            showLoading('reportContainer');
+
+            try {
+                const data = await getEventReport(eventId);
+                const report = data.report;
+
+                const registrationsHTML = report.registrations.map(reg => `
+          <tr>
+            <td>${reg.participant.name}</td>
+            <td>${reg.participant.email}</td>
+            <td>${reg.ticketId}</td>
+            <td>${formatDateTime(reg.registeredAt)}</td>
+            <td>
+              <span class="badge ${reg.attended ? 'badge-success' : 'badge-warning'}">
+                ${reg.attended ? 'Yes' : 'No'}
+              </span>
+            </td>
+            <td>${reg.attendedAt ? formatDateTime(reg.attendedAt) : '-'}</td>
+          </tr>
+        `).join('');
+
+                document.getElementById('reportContainer').innerHTML = `
+          <div>
+            <h2 style="margin-bottom: 1rem;">${report.event.title}</h2>
+            <div class="grid grid-2 mb-4">
+              <div>
+                <p><strong>Date:</strong> ${formatDate(report.event.date)}</p>
+                <p><strong>Time:</strong> ${report.event.time}</p>
+                <p><strong>Venue:</strong> ${report.event.venue}, ${report.event.address}, ${report.event.city}, ${report.event.state} ${report.event.zip}</p>
+                <p><strong>Status:</strong> <span class="badge badge-${report.event.status === 'active' ? 'success' : 'danger'}">${report.event.status}</span></p>
+              </div>
+              <div>
+                <p><strong>Organizer:</strong> ${report.event.organizer.name}</p>
+                <p><strong>Email:</strong> ${report.event.organizer.email}</p>
+              </div>
+            </div>
+
+            <h3 style="margin: 2rem 0 1rem;">Statistics</h3>
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-value">${report.statistics.totalCapacity}</div>
+                <div class="stat-label">Total Capacity</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">${report.statistics.totalRegistrations}</div>
+                <div class="stat-label">Total Registrations</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">${report.statistics.attendedCount}</div>
+                <div class="stat-label">Attended</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">${report.statistics.attendanceRate}</div>
+                <div class="stat-label">Attendance Rate</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">${report.statistics.registrationRate}</div>
+                <div class="stat-label">Registration Rate</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">${report.statistics.availableSeats}</div>
+                <div class="stat-label">Available Seats</div>
+              </div>
+            </div>
+
+            <h3 style="margin: 2rem 0 1rem;">Registrations</h3>
+            ${report.registrations.length > 0 ? `
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Ticket ID</th>
+                    <th>Registered At</th>
+                    <th>Attended</th>
+                    <th>Attended At</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${registrationsHTML}
+                </tbody>
+              </table>
+            ` : '<p style="color: var(--gray); text-align: center; padding: 2rem;">No registrations yet</p>'}
+          </div>
+        `;
+            } catch (error) {
+                showError('reportContainer', error.message);
+            }
+        }
+
+        async function loadSystemOverview() {
+            if (!hasRole('admin')) {
+                return;
+            }
+
+            document.getElementById('systemOverview').classList.remove('hidden');
+            showLoading('overviewContainer');
+
+            try {
+                const data = await getSystemOverview();
+                const overview = data.overview;
+
+                const topEventsHTML = overview.topEvents.map(event => `
+          <tr>
+            <td>${event.title}</td>
+            <td>${event.organizer.name}</td>
+            <td>${event.registeredCount}/${event.capacity}</td>
+            <td><span class="badge badge-${event.status === 'active' ? 'success' : 'danger'}">${event.status}</span></td>
+          </tr>
+        `).join('');
+
+                document.getElementById('overviewContainer').innerHTML = `
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value">${overview.summary.totalEvents}</div>
+              <div class="stat-label">Total Events</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${overview.summary.activeEvents}</div>
+              <div class="stat-label">Active Events</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${overview.summary.totalUsers}</div>
+              <div class="stat-label">Total Users</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${overview.summary.totalRegistrations}</div>
+              <div class="stat-label">Total Registrations</div>
+            </div>
+          </div>
+
+          <h3 style="margin: 2rem 0 1rem;">Top Events by Registration</h3>
+          ${overview.topEvents.length > 0 ? `
+            <table>
+              <thead>
+                <tr>
+                  <th>Event</th>
+                  <th>Organizer</th>
+                  <th>Registrations</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${topEventsHTML}
+              </tbody>
+            </table>
+          ` : '<p style="color: var(--gray); text-align: center; padding: 2rem;">No events yet</p>'}
+        `;
+            } catch (error) {
+                showError('overviewContainer', error.message);
+            }
+        }
+
+        if (eventId) {
+            loadEventReport();
+        }
+
+        loadSystemOverview();
+    </script>
+</body>
+
+</html>

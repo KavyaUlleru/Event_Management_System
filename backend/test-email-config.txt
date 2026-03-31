@@ -1,0 +1,9 @@
+# Test Email Configuration (Generated)
+EMAIL_HOST=smtp.ethereal.email
+EMAIL_PORT=587
+EMAIL_USER=vpmzcm336zfq7drc@ethereal.email
+EMAIL_PASS=KmF1ex7dVYSEXJ31rA
+EMAIL_FROM=Event Management System <noreply@eventmanagement.com>
+
+# To view emails: https://ethereal.email/messages
+# Login: vpmzcm336zfq7drc@ethereal.email / KmF1ex7dVYSEXJ31rA

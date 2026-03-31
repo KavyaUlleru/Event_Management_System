@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Event - Event Management System</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        #mapContainer {
+            height: 300px;
+            width: 100%;
+            border-radius: 8px;
+            margin-top: 10px;
+            display: none;
+        }
+        .map-info {
+            font-size: 0.875rem;
+            color: var(--gray);
+            margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <nav>
+        <div class="container">
+            <div class="logo">🎉 Event Manager</div>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="events.html">Events</a></li>
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="my-tickets.html">My Tickets</a></li>
+                <li><a href="#" onclick="logout()" class="btn btn-danger btn-sm">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card mt-4 card-centered">
+            <div class="card-header">
+                <h1 class="card-title" id="pageTitle">Create New Event</h1>
+            </div>
+
+            <div id="message"></div>
+
+            <form id="createEventForm">
+                <div class="form-group">
+                    <label for="title">Event Title *</label>
+                    <input type="text" class="form-control" id="title" placeholder="Enter event title" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Description *</label>
+                    <textarea class="form-control" id="description" placeholder="Enter event description" required></textarea>
+                </div>
+
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label for="date">Date *</label>
+                        <input type="date" class="form-control" id="date" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="time">Time *</label>
+                        <input type="time" class="form-control" id="time" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="venue">Venue *</label>
+                    <input type="text" class="form-control" id="venue" placeholder="Enter venue name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="address">Address *</label>
+                    <input type="text" class="form-control" id="address" placeholder="Enter full address" required>
+                </div>
+
+                <div class="grid grid-3">
+                    <div class="form-group">
+                        <label for="city">City *</label>
+                        <input type="text" class="form-control" id="city" placeholder="Enter city" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="state">State *</label>
+                        <input type="text" class="form-control" id="state" placeholder="Enter state" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="zip">PIN Code *</label>
+                        <input type="text" class="form-control" id="zip" placeholder="Enter PIN code" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>📍 Event Location (GPS Coordinates)</label>
+                    <div id="mapContainer"></div>
+                    <div class="grid grid-2" style="margin-top: 10px;">
+                        <div class="form-group">
+                            <label for="latitude">Latitude</label>
+                            <input type="number" class="form-control" id="latitude" placeholder="Latitude" step="any">
+                            <p class="map-info">Click on map or enter manually</p>
+                        </div>
+                        <div class="form-group">
+                            <label for="longitude">Longitude</label>
+                            <input type="number" class="form-control" id="longitude" placeholder="Longitude" step="any">
+                            <p class="map-info">Click on map or enter manually</p>
+                        </div>
+                    </div>
+                    <button type="button" id="showMapBtn" class="btn btn-secondary" style="width: 100%; margin-top: 10px;">Show Map</button>
+                </div>
+
+                <div class="form-group">
+                    <label for="capacity">Capacity *</label>
+                    <input type="number" class="form-control" id="capacity" min="1" placeholder="Enter maximum capacity" required>
+                </div>
+
+                <div class="grid grid-2">
+                    <button type="submit" class="btn btn-primary">Create Event</button>
+                    <a href="dashboard.html" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        protectPage();
+
+        // Check if user has permission
+        if (!hasRole('organizer', 'admin')) {
+            alert('You do not have permission to create events');
+            window.location.href = 'dashboard.html';
+        }
+
+        // Check if editing
+        const urlParams = new URLSearchParams(window.location.search);
+        const editEventId = urlParams.get('edit');
+        let isEditing = false;
+
+        if (editEventId) {
+            isEditing = true;
+            document.getElementById('pageTitle').textContent = 'Edit Event';
+            loadEventForEditing(editEventId);
+        }
+
+        async function loadEventForEditing(eventId) {
+            try {
+                const data = await getEvent(eventId);
+                const event = data.event;
+
+                // Check if user owns the event
+                if (event.organizer._id !== getUser().id && !hasRole('admin')) {
+                    alert('You do not have permission to edit this event');
+                    window.location.href = 'dashboard.html';
+                    return;
+                }
+
+                // Populate form
+                document.getElementById('title').value = event.title;
+                document.getElementById('description').value = event.description;
+                document.getElementById('date').value = event.date.split('T')[0];
+                document.getElementById('time').value = event.time;
+                document.getElementById('venue').value = event.venue;
+                document.getElementById('address').value = event.address;
+                document.getElementById('city').value = event.city;
+                document.getElementById('state').value = event.state;
+                document.getElementById('zip').value = event.zip;
+                document.getElementById('capacity').value = event.capacity;
+            } catch (error) {
+                showError('message', 'Failed to load event: ' + error.message);
+            }
+        }
+
+        document.getElementById('createEventForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const eventData = {
+                title: document.getElementById('title').value,
+                description: document.getElementById('description').value,
+                date: document.getElementById('date').value,
+                time: document.getElementById('time').value,
+                venue: document.getElementById('venue').value,
+                address: document.getElementById('address').value,
+                city: document.getElementById('city').value,
+                state: document.getElementById('state').value,
+                zip: document.getElementById('zip').value,
+                capacity: parseInt(document.getElementById('capacity').value),
+                latitude: document.getElementById('latitude').value ? parseFloat(document.getElementById('latitude').value) : null,
+                longitude: document.getElementById('longitude').value ? parseFloat(document.getElementById('longitude').value) : null
+            };
+
+            try {
+                let data;
+                if (isEditing) {
+                    data = await updateEvent(editEventId, eventData);
+                    showSuccess('message', 'Event updated successfully! Redirecting...');
+                } else {
+                    data = await createEvent(eventData);
+                    showSuccess('message', 'Event created successfully! Redirecting...');
+                }
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 2000);
+            } catch (error) {
+                showError('message', error.message);
+            }
+        });
+
+        // Set minimum date to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('date').setAttribute('min', today);
+
+        // Map initialization
+        let map = null;
+        let marker = null;
+
+        document.getElementById('showMapBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            const mapContainer = document.getElementById('mapContainer');
+            
+            if (mapContainer.style.display === 'none' || mapContainer.style.display === '') {
+                mapContainer.style.display = 'block';
+                
+                if (!map) {
+                    // Default to India center
+                    const defaultLat = 20.5937;
+                    const defaultLng = 78.9629;
+                    
+                    // Create map with proper configuration
+                    map = L.map('mapContainer', {
+                        scrollWheelZoom: true,
+                        dragging: true,
+                        touchZoom: true
+                    }).setView([defaultLat, defaultLng], 5);
+                    
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors',
+                        maxZoom: 19
+                    }).addTo(map);
+
+                    // Load existing coordinates if available
+                    const lat = parseFloat(document.getElementById('latitude').value) || defaultLat;
+                    const lng = parseFloat(document.getElementById('longitude').value) || defaultLng;
+                    
+                    map.setView([lat, lng], 13);
+                    
+                    if (document.getElementById('latitude').value && document.getElementById('longitude').value) {
+                        addMarker(lat, lng);
+                    }
+
+                    // Click to add marker
+                    map.on('click', function(e) {
+                        const lat = e.latlng.lat;
+                        const lng = e.latlng.lng;
+                        
+                        document.getElementById('latitude').value = lat.toFixed(6);
+                        document.getElementById('longitude').value = lng.toFixed(6);
+                        
+                        addMarker(lat, lng);
+                    });
+                }
+                
+                // Trigger map resize and invalidation
+                setTimeout(() => {
+                    if (map) {
+                        map.invalidateSize();
+                    }
+                }, 100);
+                
+                document.getElementById('showMapBtn').textContent = 'Hide Map';
+            } else {
+                mapContainer.style.display = 'none';
+                document.getElementById('showMapBtn').textContent = 'Show Map';
+            }
+        });
+
+        function addMarker(lat, lng) {
+            if (marker) {
+                map.removeLayer(marker);
+            }
+            marker = L.marker([lat, lng]).addTo(map);
+        }
+    </script>
+</body>
+
+</html>

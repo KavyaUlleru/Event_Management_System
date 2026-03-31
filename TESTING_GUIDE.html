@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Testing Guide - Event Management System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 3rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 1rem;
+            font-size: 2.5rem;
+        }
+
+        h2 {
+            color: #764ba2;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        h3 {
+            color: #667eea;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .status {
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+
+        .status.running {
+            background: #dbeafe;
+            border-left-color: #3b82f6;
+        }
+
+        .step {
+            background: #f9fafb;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .step h3 {
+            margin-top: 0;
+        }
+
+        code {
+            background: #1f2937;
+            color: #10b981;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .code-block {
+            background: #1f2937;
+            color: #e5e7eb;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            margin: 0.5rem 0.5rem 0.5rem 0;
+            transition: transform 0.3s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+        }
+
+        ul {
+            margin-left: 2rem;
+            margin-top: 0.5rem;
+        }
+
+        li {
+            margin: 0.5rem 0;
+        }
+
+        .warning {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+
+        .module-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .module-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .module-card h4 {
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        .module-card p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🎉 Event Management System - Testing Guide</h1>
+
+        <div class="status running">
+            <strong>✅ Backend Status:</strong> Running on <code>http://localhost:5000</code><br>
+            <strong>✅ MongoDB:</strong> Connected Successfully<br>
+            <strong>📍 Frontend:</strong> Available at
+            <code>file:///d:/event management system/frontend/index.html</code>
+        </div>
+
+        <h2>Quick Start</h2>
+        <div class="step">
+            <h3>Option 1: Direct File Access (Recommended for Testing)</h3>
+            <p>Simply open the frontend files directly in your browser:</p>
+            <a href="file:///d:/event management system/frontend/index.html" class="btn" target="_blank">
+                🚀 Open Application
+            </a>
+        </div>
+
+        <div class="step">
+            <h3>Option 2: Using HTTP Server</h3>
+            <p>For a more production-like environment, run a local server:</p>
+            <div class="code-block">
+                # Using Python<br>
+                cd "d:\event management system\frontend"<br>
+                python -m http.server 3000<br>
+                <br>
+                # Or using Node.js<br>
+                npx http-server -p 3000
+            </div>
+            <p>Then open: <code>http://localhost:3000</code></p>
+        </div>
+
+        <h2>All 7 Modules Implemented</h2>
+        <div class="module-grid">
+            <div class="module-card">
+                <h4>🔐 Authentication</h4>
+                <p>JWT-based secure login with role-based access</p>
+            </div>
+            <div class="module-card">
+                <h4>📅 Event Management</h4>
+                <p>Create, update, delete events with capacity tracking</p>
+            </div>
+            <div class="module-card">
+                <h4>✍️ Registration</h4>
+                <p>Online registration with capacity validation</p>
+            </div>
+            <div class="module-card">
+                <h4>🎫 Digital Tickets</h4>
+                <p>QR code generation for secure entry</p>
+            </div>
+            <div class="module-card">
+                <h4>📧 Notifications</h4>
+                <p>Email confirmations and reminders</p>
+            </div>
+            <div class="module-card">
+                <h4>✅ Attendance</h4>
+                <p>QR scanning for attendance marking</p>
+            </div>
+            <div class="module-card">
+                <h4>📊 Analytics</h4>
+                <p>Reports and performance metrics</p>
+            </div>
+        </div>
+
+        <h2>Step-by-Step Testing Guide</h2>
+
+        <div class="step">
+            <h3>Step 1: Test User Registration</h3>
+            <ol>
+                <li>Click "Sign Up" on the homepage</li>
+                <li>Fill in the registration form:
+                    <ul>
+                        <li><strong>Name:</strong> Test Participant</li>
+                        <li><strong>Email:</strong> participant@test.com</li>
+                        <li><strong>Password:</strong> test123</li>
+                        <li><strong>Role:</strong> Participant</li>
+                    </ul>
+                </li>
+                <li>Click "Sign Up" - you should be redirected to the dashboard</li>
+                <li>Repeat for an Organizer account (organizer@test.com)</li>
+            </ol>
+        </div>
+
+        <div class="step">
+            <h3>Step 2: Test Event Creation (Organizer)</h3>
+            <ol>
+                <li>Login as Organizer (organizer@test.com)</li>
+                <li>Click "Create Event" button</li>
+                <li>Fill in event details:
+                    <ul>
+                        <li><strong>Title:</strong> Tech Conference 2026</li>
+                        <li><strong>Description:</strong> Annual technology conference</li>
+                        <li><strong>Date:</strong> Select a future date</li>
+                        <li><strong>Time:</strong> 10:00 AM</li>
+                        <li><strong>Venue:</strong> Convention Center</li>
+                        <li><strong>Capacity:</strong> 100</li>
+                    </ul>
+                </li>
+                <li>Click "Create Event"</li>
+                <li>Verify event appears in dashboard</li>
+            </ol>
+        </div>
+
+        <div class="step">
+            <h3>Step 3: Test Event Registration (Participant)</h3>
+            <ol>
+                <li>Logout and login as Participant (participant@test.com)</li>
+                <li>Go to "Events" page</li>
+                <li>Find the event you created</li>
+                <li>Click "Register Now"</li>
+                <li>Confirm registration</li>
+                <li>Verify success message appears</li>
+            </ol>
+        </div>
+
+        <div class="step">
+            <h3>Step 4: Test Digital Ticketing</h3>
+            <ol>
+                <li>Go to "My Tickets" page</li>
+                <li>Verify your ticket is displayed with:
+                    <ul>
+                        <li>Event details</li>
+                        <li>Unique Ticket ID</li>
+                        <li><strong>QR Code</strong> (this is your digital ticket!)</li>
+                    </ul>
+                </li>
+                <li>Take a screenshot of the QR code for testing</li>
+            </ol>
+        </div>
+
+        <div class="step">
+            <h3>Step 5: Test QR Code Scanning (Organizer)</h3>
+            <ol>
+                <li>Logout and login as Organizer</li>
+                <li>Go to Dashboard → Click "Scan QR" for your event</li>
+                <li>Click "Start Scanner"</li>
+                <li>Allow camera access when prompted</li>
+                <li>Show the QR code from Step 4 to the camera</li>
+                <li>Verify attendance is marked successfully</li>
+                <li>Try scanning the same QR again - should show "Already attended"</li>
+            </ol>
+        </div>
+
+        <div class="step">
+            <h3>Step 6: Test Email Notifications</h3>
+            <div class="warning">
+                <strong>⚠️ Email Setup Required:</strong> To test email notifications, you need to configure email
+                credentials in <code>backend/.env</code>
+            </div>
+            <p>Update these values in <code>backend/.env</code>:</p>
+            <div class="code-block">
+                EMAIL_HOST=smtp.gmail.com<br>
+                EMAIL_PORT=587<br>
+                EMAIL_USER=your_email@gmail.com<br>
+                EMAIL_PASS=your_app_password
+            </div>
+            <p>For Gmail, you need to generate an App Password (requires 2FA enabled)</p>
+            <p>After configuration, register for an event and check your email for the confirmation with QR code!</p>
+        </div>
+
+        <div class="step">
+            <h3>Step 7: Test Reports & Analytics</h3>
+            <ol>
+                <li>Login as Organizer</li>
+                <li>Go to Dashboard</li>
+                <li>Click "View Report" for your event</li>
+                <li>Verify you see:
+                    <ul>
+                        <li>Total registrations</li>
+                        <li>Attendance count</li>
+                        <li>Attendance rate</li>
+                        <li>List of participants with attendance status</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+
+        <h2>API Testing (Optional)</h2>
+        <div class="step">
+            <h3>Test API Endpoints Directly</h3>
+            <p>You can test the API using tools like Postman or curl:</p>
+            <div class="code-block">
+                # Health Check<br>
+                curl http://localhost:5000/api/health<br>
+                <br>
+                # Register User<br>
+                curl -X POST http://localhost:5000/api/auth/register \<br>
+                -H "Content-Type: application/json" \<br>
+                -d '{"name":"Test User","email":"test@test.com","password":"test123","role":"participant"}'<br>
+                <br>
+                # Get Events<br>
+                curl http://localhost:5000/api/events
+            </div>
+        </div>
+
+        <h2>Troubleshooting</h2>
+
+        <div class="step">
+            <h3>Common Issues</h3>
+            <ul>
+                <li><strong>CORS Error:</strong> Make sure backend is running on port 5000</li>
+                <li><strong>MongoDB Connection Error:</strong> Ensure MongoDB service is running</li>
+                <li><strong>Camera Access Denied:</strong> Grant camera permissions for QR scanning</li>
+                <li><strong>Email Not Sending:</strong> Check email credentials in .env file</li>
+            </ul>
+        </div>
+
+        <h2>Project Files</h2>
+        <div class="step">
+            <h3>Quick Access</h3>
+            <a href="file:///d:/event management system/frontend/index.html" class="btn">Home Page</a>
+            <a href="file:///d:/event management system/frontend/events.html" class="btn">Events</a>
+            <a href="file:///d:/event management system/frontend/dashboard.html" class="btn">Dashboard</a>
+            <a href="file:///d:/event management system/README.md" class="btn btn-secondary">README</a>
+        </div>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li>✅ Test all 7 modules following the guide above</li>
+            <li>📧 Configure email credentials for notifications</li>
+            <li>🎨 Customize the UI colors/branding if needed</li>
+            <li>🚀 Deploy to production (Heroku, Railway, Vercel, etc.)</li>
+            <li>📱 Test on mobile devices for responsiveness</li>
+        </ul>
+
+        <div class="status">
+            <strong>🎉 Congratulations!</strong> Your Event Management System is ready to use with all 7 modules fully
+            functional!
+        </div>
+    </div>
+</body>
+
+</html>

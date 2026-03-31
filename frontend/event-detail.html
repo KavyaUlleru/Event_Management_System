@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Details - Event Management System</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        .event-detail-map {
+            height: 300px;
+            width: 100%;
+            border-radius: 8px;
+            margin: 1rem 0;
+            border: 1px solid #ddd;
+            z-index: 1 !important;
+        }
+
+        .leaflet-container {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100%;
+        }
+
+        .event-detail-header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+
+        .event-detail-header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+        }
+
+        .event-detail-header p {
+            margin: 0.5rem 0 0 0;
+            opacity: 0.9;
+        }
+
+        .event-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .info-section {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-section h3 {
+            margin-top: 0;
+            color: var(--primary);
+            font-size: 1.125rem;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 0.5rem;
+        }
+
+        .info-item {
+            margin: 1rem 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .info-item strong {
+            min-width: 100px;
+            color: var(--dark);
+        }
+
+        .info-item p {
+            margin: 0;
+            color: var(--gray);
+        }
+
+        .description-box {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            border-left: 4px solid var(--primary);
+            margin-bottom: 2rem;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 2rem 0;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .back-link:hover {
+            gap: 1rem;
+        }
+
+        .capacity-bar {
+            background: #e0e0e0;
+            border-radius: 8px;
+            height: 24px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .capacity-fill {
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .event-detail-header h1 {
+                font-size: 1.75rem;
+            }
+
+            .event-info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .action-buttons .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <nav>
+        <div class="container">
+            <div class="logo">🎉 Event Manager</div>
+            <ul id="navLinks">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="events.html">Events</a></li>
+                <li id="authLinks">
+                    <a href="index.html">Login</a>
+                </li>
+                <li id="userLinks" class="hidden">
+                    <a href="dashboard.html">Dashboard</a>
+                    <a href="my-tickets.html">My Tickets</a>
+                    <a href="#" onclick="logout()" class="btn btn-danger btn-sm">Logout</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <a href="events.html" class="back-link">← Back to Events</a>
+
+        <div id="loadingMessage">
+            <div class="loading"><div class="spinner"></div>Loading event details...</div>
+        </div>
+
+        <div id="errorMessage"></div>
+
+        <div id="eventContent" style="display: none;">
+            <!-- Event Header -->
+            <div class="event-detail-header" id="eventHeader"></div>
+
+            <!-- Event Information Grid -->
+            <div class="event-info-grid">
+                <div class="info-section" id="dateTimeSection"></div>
+                <div class="info-section" id="capacitySection"></div>
+                <div class="info-section" id="locationSection"></div>
+            </div>
+
+            <!-- Description -->
+            <div class="description-box" id="descriptionBox"></div>
+
+            <!-- Map (if coordinates available) -->
+            <div id="mapSection" style="display: none;">
+                <h2>📍 Event Location</h2>
+                <div id="eventDetailMap" class="event-detail-map"></div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons" id="actionButtons"></div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        console.log('📄 Event Detail Page Loading...');
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const eventId = urlParams.get('eventId');
+
+        if (!eventId) {
+            showError('errorMessage', 'Event ID not provided. Please select an event from the events page.');
+            document.getElementById('loadingMessage').style.display = 'none';
+        } else {
+            loadEventDetail();
+        }
+
+        async function loadEventDetail() {
+            try {
+                console.log('📡 Fetching event details for ID:', eventId);
+
+                const eventData = await getEvent(eventId);
+                const event = eventData.event;
+
+                console.log('✅ Event loaded:', event);
+
+                displayEventDetail(event);
+                document.getElementById('loadingMessage').style.display = 'none';
+                document.getElementById('eventContent').style.display = 'block';
+            } catch (error) {
+                console.error('❌ Error loading event:', error);
+                document.getElementById('loadingMessage').style.display = 'none';
+                showError('errorMessage', error.message);
+            }
+        }
+
+        function displayEventDetail(event) {
+            // Header
+            document.getElementById('eventHeader').innerHTML = `
+                <h1>${event.title}</h1>
+                <p>${event.description}</p>
+                <div style="margin-top: 1rem; font-size: 0.95rem;">
+                    <span class="badge badge-${event.registeredCount >= event.capacity ? 'danger' : 'success'}">
+                        ${event.registeredCount >= event.capacity ? 'Event Full' : event.capacity - event.registeredCount + ' seats available'}
+                    </span>
+                </div>
+            `;
+
+            // Date and Time Section
+            document.getElementById('dateTimeSection').innerHTML = `
+                <h3>📅 Date & Time</h3>
+                <div class="info-item">
+                    <strong>Date:</strong>
+                    <p>${formatDate(event.date)}</p>
+                </div>
+                <div class="info-item">
+                    <strong>Time:</strong>
+                    <p>${event.time}</p>
+                </div>
+            `;
+
+            // Capacity Section
+            const capacityPercent = (event.registeredCount / event.capacity) * 100;
+            document.getElementById('capacitySection').innerHTML = `
+                <h3>👥 Capacity</h3>
+                <div class="info-item">
+                    <strong>Registered:</strong>
+                    <p>${event.registeredCount}/${event.capacity}</p>
+                </div>
+                <div class="capacity-bar">
+                    <div class="capacity-fill" style="width: ${capacityPercent}%;">
+                        ${Math.round(capacityPercent)}%
+                    </div>
+                </div>
+            `;
+
+            // Location Section
+            document.getElementById('locationSection').innerHTML = `
+                <h3>📍 Location</h3>
+                <div class="info-item">
+                    <strong>Venue:</strong>
+                    <p>${event.venue}</p>
+                </div>
+                <div class="info-item">
+                    <strong>Address:</strong>
+                    <p>${event.address}</p>
+                </div>
+                <div class="info-item">
+                    <strong>City:</strong>
+                    <p>${event.city}, ${event.state} ${event.zip}</p>
+                </div>
+            `;
+
+            // Description
+            document.getElementById('descriptionBox').innerHTML = `
+                <h2>📝 Event Description</h2>
+                <p style="line-height: 1.8; color: var(--dark);">${event.description}</p>
+            `;
+
+            // Map
+            if (event.latitude && event.longitude) {
+                document.getElementById('mapSection').style.display = 'block';
+                setTimeout(() => initializeDetailMap(event), 300);
+            }
+
+            // Action Buttons
+            let actionHTML = `
+                <a href="events.html" class="btn btn-secondary">← Back to Events</a>
+            `;
+
+            if (event.latitude && event.longitude) {
+                actionHTML += `
+                    <a href="route-map.html?eventId=${event._id}" class="btn btn-success">
+                        📍 View Route
+                    </a>
+                `;
+            }
+
+            if (isAuthenticated()) {
+                const hasRegistered = false; // You can check this against user's registrations
+                if (!hasRegistered && event.registeredCount < event.capacity) {
+                    actionHTML += `
+                        <button onclick="registerForThisEvent('${event._id}', '${event.title.replace(/'/g, "\\'")}')' class="btn btn-primary">
+                            ✓ Register for Event
+                        </button>
+                    `;
+                }
+            } else {
+                actionHTML += `
+                    <a href="index.html" class="btn btn-primary">Login to Register</a>
+                `;
+            }
+
+            document.getElementById('actionButtons').innerHTML = actionHTML;
+        }
+
+        function initializeDetailMap(event) {
+            const mapContainer = document.getElementById('eventDetailMap');
+            if (!mapContainer) return;
+
+            try {
+                const map = L.map('eventDetailMap').setView([event.latitude, event.longitude], 14);
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors',
+                    maxZoom: 19
+                }).addTo(map);
+
+                L.marker([event.latitude, event.longitude])
+                    .bindPopup(`<strong>${event.venue}</strong><br>${event.address}`)
+                    .addTo(map)
+                    .openPopup();
+
+                map.invalidateSize();
+                console.log('✅ Map initialized for event detail');
+            } catch (error) {
+                console.error('❌ Error initializing map:', error);
+            }
+        }
+
+        function registerForThisEvent(eventId, eventTitle) {
+            // Open registration modal or navigate to registration
+            window.location.href = `events.html#event-${eventId}`;
+        }
+
+        function showError(elementId, message) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.innerHTML = `<div class="alert alert-danger">❌ ${message}</div>`;
+            }
+        }
+
+        // Update navigation
+        updateNav();
+    </script>
+</body>
+
+</html>
